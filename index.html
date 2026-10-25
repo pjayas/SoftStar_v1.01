@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="SoftStar">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="theme-color" content="#f0f2f5">
+  <meta name="format-detection" content="telephone=no">
+  <title>생물학 심화 암기 포스트잇 스터디 보드 (AI 연동)</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;900&family=Nanum+Pen+Script&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      font-family: 'Noto Sans KR', sans-serif;
+      background-color: #f0f2f5;
+      background-image:
+        radial-gradient(#cbd5e1 1px, transparent 1px),
+        radial-gradient(#cbd5e1 1px, #f0f2f5 1px);
+      background-size: 40px 40px;
+      background-position: 0 0, 20px 20px;
+      min-height: 100vh;
+      color: #1e293b;
+    }
+    .font-hand { font-family: 'Nanum Pen Script', cursive; }
+
+    .sticky-grid { display: grid; grid-template-columns: repeat(1, minmax(0, 1fr)); gap: 1.75rem; padding: 0.5rem; }
+    @media (min-width: 768px) { .sticky-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (min-width: 1180px) { .sticky-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+
+    .sticky-note {
+      position: relative;
+      border-radius: 2px 2px 2px 24px;
+      padding: 1.25rem;
+      transition: all 0.25s ease-in-out;
+      box-shadow: 3px 5px 12px rgba(0,0,0,0.12), 0 1px 3px rgba(0,0,0,0.08);
+      break-inside: avoid;
+      align-self: start;
+    }
+    .sticky-note:hover {
+      transform: scale(1.02) rotate(0deg) !important;
+      z-index: 20;
+      box-shadow: 8px 16px 24px rgba(0,0,0,0.18), 0 4px 8px rgba(0,0,0,0.1);
+    }
+    .sticky-note::after {
+      content: ""; position: absolute; bottom: 0; left: 0; width: 0; height: 0;
+      border-style: solid; border-width: 0 0 20px 20px;
+      border-color: transparent transparent rgba(0, 0, 0, 0.18) transparent;
+      border-radius: 0 0 0 6px; pointer-events: none;
+    }
+
+    .note-yellow { background: linear-gradient(135deg, #fffde7 0%, #fff9c4 100%); border-top: 28px solid #fbc02d; }
+    .note-blue   { background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%); border-top: 28px solid #1e88e5; }
+    .note-green  { background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%); border-top: 28px solid #43a047; }
+    .note-purple { background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%); border-top: 28px solid #8e24aa; }
+    .note-red    { background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%); border-top: 28px solid #e53935; }
+    .note-pink   { background: linear-gradient(135deg, #fce4ec 0%, #f8bbd0 100%); border-top: 28px solid #ec407a; }
+    .note-sky    { background: linear-gradient(135deg, #e1f5fe 0%, #b3e5fc 100%); border-top: 28px solid #29b6f6; }
+    .note-teal   { background: linear-gradient(135deg, #e0f2f1 0%, #b2dfdb 100%); border-top: 28px solid #00897b; }
+    .note-lime   { background: linear-gradient(135deg, #f9fbe7 0%, #f0f4c3 100%); border-top: 28px solid #afb42b; }
+    .note-brown  { background: linear-gradient(135deg, #efebe9 0%, #d7ccc8 100%); border-top: 28px solid #8d6e63; }
+    .note-gray   { background: linear-gradient(135deg, #eceff1 0%, #cfd8dc 100%); border-top: 28px solid #78909c; }
+    .note-custom { border-top: 28px solid #999; }
+    .note-orange { background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%); border-top: 28px solid #fb8c00; }
+
+    .note-pin {
+      position: absolute; top: -18px; left: 50%;
+      width: 80px; height: 22px;
+      background: rgba(255, 255, 255, 0.6);
+      backdrop-filter: blur(2px);
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+      transform: translateX(-50%) rotate(-2deg);
+      pointer-events: none;
+    }
+
+    .tilt-left-1 { transform: rotate(-1.2deg); }
+    .tilt-right-1 { transform: rotate(1.4deg); }
+    .tilt-left-2 { transform: rotate(-2.1deg); }
+    .tilt-right-2 { transform: rotate(2.3deg); }
+    .tilt-zero { transform: rotate(0deg); }
+
+    details > summary {
+      list-style: none; cursor: pointer; user-select: none; font-weight: 700; color: #0f172a;
+      display: flex; align-items: center; justify-content: space-between; outline: none;
+    }
+    details > summary::-webkit-details-marker { display: none; }
+    .toggle-icon { transition: transform 0.2s ease; width: 1.25rem; height: 1.25rem; flex-shrink: 0; }
+    details[open] .toggle-icon { transform: rotate(180deg); }
+
+    .card-content {
+      margin-top: 0.85rem; padding-top: 0.85rem;
+      border-top: 1px solid #cbd5e1;
+      font-size: 0.9rem; line-height: 1.55;
+    }
+    .flow {
+      background-color: rgba(255, 255, 255, 0.65); border-left: 3px solid #3b82f6;
+      padding: 0.5rem 0.75rem; border-radius: 0 0.375rem 0.375rem 0; margin: 0.5rem 0; font-weight: 500;
+    }
+    .warning {
+      background-color: rgba(254, 242, 242, 0.85); border-left: 3px solid #ef4444; color: #991b1b;
+      padding: 0.5rem 0.75rem; border-radius: 0 0.375rem 0.375rem 0; margin: 0.5rem 0; font-size: 0.85rem;
+    }
+    .memory {
+      background-color: rgba(240, 253, 244, 0.9); border: 1px dashed #22c55e; color: #14532d;
+      padding: 0.5rem 0.75rem; border-radius: 0.5rem; margin: 0.5rem 0; font-weight: 600;
+      display: flex; align-items: center; gap: 0.375rem;
+    }
+    .badge {
+      display: inline-block; padding: 0.15rem 0.5rem; font-size: 0.7rem; font-weight: 700;
+      border-radius: 9999px; text-transform: uppercase; margin-bottom: 0.4rem;
+    }
+    .badge-mol { background-color: #dbeafe; color: #1e40af; }
+    .badge-imm { background-color: #f3e8ff; color: #6b21a8; }
+    .badge-met { background-color: #fef3c7; color: #92400e; }
+    .badge-dev { background-color: #dcfce7; color: #166534; }
+
+    svg text { font-family: 'Noto Sans KR', sans-serif; }
+
+    .filter-btn.active { background-color: #1e293b; color: #ffffff; border-color: #1e293b; }
+
+    .badge-x0 { background-color: #fce7f3; color: #9d174d; }
+    .badge-x1 { background-color: #ccfbf1; color: #115e59; }
+    .badge-x2 { background-color: #e0f2fe; color: #075985; }
+    .badge-x3 { background-color: #ecfccb; color: #3f6212; }
+    .badge-x4 { background-color: #ffe4e6; color: #9f1239; }
+    .badge-x5 { background-color: #e2e8f0; color: #334155; }
+
+    .rich-content { overflow-x: auto; }
+    .rich-content h3 { font-size: 1em; font-weight: 700; margin: 16px 0 6px; }
+    .rich-content p { margin: 6px 0; }
+    .rich-content ul { list-style: disc; padding-left: 1.15rem; margin: 6px 0; }
+    .rich-content li { margin: 4px 0; }
+    .rich-content a { color: #1d4ed8; text-decoration: underline; }
+    .rich-content table { width: 100%; border-collapse: collapse; font-size: .85em; line-height: 1.55; margin: 10px 0; background: rgba(255,255,255,.45); }
+    .rich-content th, .rich-content td { border: 1px solid rgba(100,100,100,.45); padding: 6px 7px; text-align: left; vertical-align: top; overflow-wrap: anywhere; }
+    .rich-content th { background: rgba(0,0,0,.06); }
+    .rich-content .table-wrap, .rich-content .diagram { overflow-x: auto; margin: 12px 0; }
+    .rich-content svg { display: block; width: 100%; min-width: 480px; height: auto; }
+    .rich-content .memory { display: block; text-align: center; }
+    .rich-content .compare th:first-child { width: 22%; }
+    .rich-content .source-note { font-size: .8em; opacity: .8; }
+    @media (min-width: 768px) { .sticky-note.rich:has(details[open]) { grid-column: span 2; } }
+
+    .del-btn {
+      position: absolute; top: -25px; right: 6px; width: 22px; height: 22px;
+      border-radius: 9999px; background: rgba(255,255,255,.3); color: #fff;
+      font-weight: 700; font-size: 13px; line-height: 22px; text-align: center;
+      border: 0; cursor: pointer; z-index: 5; transition: background .15s;
+    }
+    .del-btn:hover { background: #ef4444; }
+    .edit-btn {
+      position: absolute; top: -25px; right: 32px; width: 22px; height: 22px;
+      border-radius: 9999px; background: rgba(255,255,255,.3); color: #fff;
+      font-size: 12px; line-height: 22px; text-align: center;
+      border: 0; cursor: pointer; z-index: 5; transition: background .15s;
+    }
+    .edit-btn:hover { background: #0ea5e9; }
+    .modal-bg {
+      position: fixed; inset: 0; background: rgba(15,23,42,.55); display: none;
+      align-items: center; justify-content: center; z-index: 100; padding: 1rem;
+    }
+    .modal-bg.show { display: flex; }
+    .swatch {
+      width: 28px; height: 28px; border-radius: 9999px; border: 3px solid transparent;
+      cursor: pointer; display: inline-block; transition: transform .15s;
+    }
+    input[name="newColor"]:checked + .swatch { border-color: #1e293b; transform: scale(1.15); }
+    #toast {
+      position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%) translateY(20px);
+      background: #1e293b; color: #fff; padding: .6rem 1.1rem; border-radius: 9999px;
+      font-size: .8rem; font-weight: 600; opacity: 0; pointer-events: none;
+      transition: all .25s; z-index: 200;
+    }
+    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  
+    html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+    * { -webkit-tap-highlight-color: transparent; }
+    button, summary, label, select { touch-action: manipulation; }
+    body {
+      font-size: 16px; line-height: 1.6;
+      padding-top: max(12px, env(safe-area-inset-top)) !important;
+      padding-left: max(12px, env(safe-area-inset-left)) !important;
+      padding-right: max(12px, env(safe-area-inset-right)) !important;
+      padding-bottom: calc(100px + env(safe-area-inset-bottom)) !important;
+    }
+    .mobile-hide { display: none !important; }
+
+    header { padding: 1rem !important; margin-bottom: 1.25rem !important; }
+    header h1 { font-size: 1.6rem !important; line-height: 1.3; }
+    header > p { font-size: .95rem !important; }
+    header .mt-6 { flex-direction: column !important; align-items: stretch !important; gap: .75rem !important; margin-top: 1rem !important; }
+    header .flex-wrap.items-center { width: 100% !important; }
+    header .relative { flex: 1 1 100% !important; width: 100% !important; min-width: 100% !important; }
+    header #searchInput { width: 100%; min-height: 46px; font-size: 16px !important; padding-left: 2.6rem !important; border-radius: 12px !important; }
+    header .relative svg { width: 1.25rem !important; height: 1.25rem !important; left: .85rem !important; top: 50% !important; transform: translateY(-50%); }
+
+    #categoryFilters { flex-wrap: nowrap !important; overflow-x: auto; justify-content: flex-start !important; gap: .4rem !important; padding: 2px 2px 6px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+    #categoryFilters::-webkit-scrollbar { display: none; }
+    #categoryFilters > * { flex: 0 0 auto; }
+    #categoryFilters .filter-btn { min-height: 42px; font-size: .95rem !important; padding: .4rem .9rem !important; white-space: nowrap; }
+    #categoryFilters > .filter-btn { border-radius: 9999px !important; }
+    #categoryFilters > span button { min-height: 42px; font-size: .95rem !important; }
+    #categoryFilters > span button:not(.filter-btn) { min-width: 38px; }
+
+    .sticky-grid { gap: 1.4rem !important; padding: .5rem 0 !important; }
+    .sticky-note, .sticky-note:hover { transform: none !important; }
+    .sticky-note { padding: 1.1rem !important; border-top-width: 38px !important; }
+    .sticky-note::after { width: 26px; height: 26px; }
+    .note-pin { top: -26px; }
+    .sticky-note h3 { font-size: 1.15rem !important; line-height: 1.4; font-weight: 800; }
+    .badge { font-size: .78rem; padding: .2rem .65rem; }
+    details > summary { min-height: 48px; }
+    .toggle-icon { width: 1.6rem; height: 1.6rem; }
+    .card-content { font-size: 1.02rem !important; line-height: 1.75 !important; }
+    .card-content li { margin: .3rem 0; }
+    .text-slate-700, .text-slate-600 { color: #1e293b !important; }
+    .flow, .warning, .memory { font-size: 1rem !important; line-height: 1.7; }
+    .del-btn, .edit-btn { width: 32px; height: 32px; line-height: 32px; font-size: 17px; top: -35px; }
+    .del-btn { right: 6px; }
+    .edit-btn { right: 44px; }
+
+    .rich-content { font-size: 1rem !important; }
+    .rich-content table { font-size: .95em; }
+    .rich-content table:has(th:nth-child(3)) { min-width: 520px; }
+    .rich-content svg { min-width: 640px; }
+    .rich-content .diagram::before { content: "↔ 좌우로 밀어서 보기"; display: block; font-size: .8rem; color: #475569; margin-bottom: 4px; }
+
+    .modal-bg { align-items: flex-end !important; padding: 0 !important; }
+    #modal > div, #aiModal > div { border-radius: 22px 22px 0 0 !important; max-width: none !important; width: 100% !important; max-height: 92dvh !important; padding: 1.25rem 1.25rem calc(1.25rem + env(safe-area-inset-bottom)) !important; }
+    #modal input, #modal select, #modal textarea, #aiModal input, #aiModal textarea { font-size: 16px !important; min-height: 46px; border-radius: 12px !important; }
+    #modal textarea, #aiModal textarea { min-height: 100px; }
+    #modal button, #aiModal button { min-height: 48px; font-size: 1rem !important; border-radius: 12px !important; }
+    #modal label, #aiModal label { font-size: .85rem !important; }
+    .swatch { width: 38px !important; height: 38px !important; }
+    #swatches label[title="직접 고르기"] { width: 38px !important; height: 38px !important; }
+
+    #bottomBar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 90; display: flex; gap: .6rem;
+      padding: .6rem max(.75rem, env(safe-area-inset-right)) calc(.6rem + env(safe-area-inset-bottom)) max(.75rem, env(safe-area-inset-left));
+      background: rgba(255,255,255,.9); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); border-top: 1px solid #e2e8f0; }
+    #bottomBar button { flex: 1; min-height: 50px; border-radius: 14px; font-weight: 700; font-size: 1rem; border: 1px solid #cbd5e1; background: #f1f5f9; color: #0f172a; }
+    #bottomBar button.primary { flex: 2; background: #1e293b; color: #fff; border-color: #1e293b; }
+    #menuSheet > div { width: 100%; background: #fff; border-radius: 22px 22px 0 0; padding: 1rem 1rem calc(1rem + env(safe-area-inset-bottom)); max-height: 90dvh; overflow: auto; }
+    #menuSheet h2 { font-size: 1.05rem; font-weight: 800; margin: .25rem .25rem .5rem; }
+    #menuSheet button { display: flex; align-items: center; gap: .6rem; width: 100%; min-height: 56px; padding: 0 1rem; margin-top: .5rem; border-radius: 14px; font-size: 1.05rem; font-weight: 600; background: #f1f5f9; color: #0f172a; text-align: left; }
+    #menuSheet button.danger { background: #fef2f2; color: #b91c1c; }
+    #menuSheet button.close { justify-content: center; background: #e2e8f0; }
+    #toast { bottom: calc(86px + env(safe-area-inset-bottom)) !important; font-size: .95rem !important; max-width: 90vw; text-align: center; }
+    footer { font-size: .8rem !important; }
+  </style>
+</head>
+<body class="p-3 md:p-6 lg:p-8">
+
+  <div class="max-w-7xl mx-auto">
+
+    <!-- Header -->
+    <header class="mb-8 text-center relative bg-white/80 backdrop-blur-md p-6 rounded-2xl shadow-sm border border-slate-200/80">
+      <div class="inline-block px-3 py-1 bg-amber-100 text-amber-800 rounded-full text-xs font-bold tracking-wider uppercase mb-2">
+        MPE / MEET / DEET / 임용고시 핵심 (AI 연동)
+      </div>
+      <h1 class="text-3xl md:text-4xl font-extrabold text-slate-800 tracking-tight mb-2">
+        생물학 심화 요약 포스트잇 스터디 보드
+      </h1>
+      <p class="text-sm md:text-base text-slate-600 max-w-2xl mx-auto">
+        핵심 개념, 기작, 다이어그램, 암기 팁을 한눈에 파악할 수 있는 대화형 디지털 스터디 보드입니다.
+      </p>
+
+      <div class="mt-6 flex flex-col md:flex-row items-center justify-between gap-4 pt-4 border-t border-slate-100">
+
+        <div class="flex flex-wrap justify-center gap-1.5" id="categoryFilters">
+          <button onclick="filterCategory('all')" class="filter-btn active px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-300 transition hover:bg-slate-100">전체보기</button>
+        </div>
+
+        <div class="flex flex-wrap items-center justify-center gap-2 w-full md:w-auto">
+          <div class="relative flex-1 md:w-56 min-w-[160px]">
+            <input type="text" id="searchInput" oninput="applyFilters()" placeholder="키워드/제목 검색..."
+              class="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-400">
+            <svg class="w-4 h-4 absolute left-2.5 top-2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+            </svg>
+          </div>
+          <button onclick="openAiModal()" class="mobile-hide px-3 py-1.5 text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg whitespace-nowrap shadow-sm">🤖 AI에게 요청</button>
+          <button onclick="toggleAll(true)" class="mobile-hide px-2.5 py-1.5 text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg border border-slate-300 transition whitespace-nowrap">모두 펼치기</button>
+          <button onclick="toggleAll(false)" class="mobile-hide px-2.5 py-1.5 text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg border border-slate-300 transition whitespace-nowrap">모두 접기</button>
+          <button onclick="openModal()" class="mobile-hide px-3 py-1.5 text-xs font-bold bg-slate-800 hover:bg-slate-700 text-white rounded-lg whitespace-nowrap">＋ 새 포스트잇</button>
+          <button onclick="restoreBuiltins()" class="mobile-hide px-2.5 py-1.5 text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg border border-slate-300 transition whitespace-nowrap">기본 카드 복원</button>
+          <button onclick="exportData()" class="mobile-hide px-2.5 py-1.5 text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-lg border border-emerald-300 transition whitespace-nowrap">⬇ 백업 저장</button>
+          <button onclick="document.getElementById('importFile').click()" class="mobile-hide px-2.5 py-1.5 text-xs font-semibold bg-sky-50 hover:bg-sky-100 text-sky-800 rounded-lg border border-sky-300 transition whitespace-nowrap">⬆ 백업 불러오기</button>
+          <input type="file" id="importFile" accept=".json,application/json" class="hidden" onchange="importData(this)">
+          <button onclick="deleteAllCards()" class="mobile-hide px-2.5 py-1.5 text-xs font-semibold bg-red-50 hover:bg-red-100 text-red-700 rounded-lg border border-red-300 transition whitespace-nowrap">🗑 전체 삭제</button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Cards Grid -->
+    <main class="sticky-grid" id="cardsGrid">
+      <!-- 기본 제공 카드들 (유지) -->
+      <article class="sticky-note note-yellow tilt-left-1" data-category="분자생물학" data-keywords="리보솜 항생제 테트라사이클린 스트렙토마이신 클로람페니콜">
+        <div class="note-pin"></div>
+        <details open>
+          <summary><div><span class="badge badge-mol">분자생물학</span><h3 class="text-base font-bold text-slate-900">① 리보솜 단위체와 항생제</h3></div></summary>
+          <div class="card-content">
+            <p class="font-semibold text-amber-900 mb-1">세균(70S) vs 진핵생물(80S) 소단위체 구분</p>
+            <ul class="list-disc pl-4 space-y-1 mb-2 text-slate-700">
+              <li><strong>세균 (70S):</strong> 30S (16S rRNA) + 50S (23S, 5S rRNA)</li>
+              <li><strong>진핵 (80S):</strong> 40S (18S rRNA) + 60S (28S, 5.8S, 5S rRNA)</li>
+            </ul>
+            <div class="memory">💡 암기: [30S 저해] 테트라사이클린(A자리 t-RNA 결합 방해), 스트렙토마이신(개시 저해)</div>
+            <div class="memory">💡 암기: [50S 저해] 클로람페니콜 & 에리스로마이신 (펩티드결합 형성/전이 억제)</div>
+            <div class="warning">⚠️ 주의: 마이코플라즈마는 세포벽이 없으므로 페니실린계(세포벽 합성 저해) 효능 없음!</div>
+          </div>
+        </details>
+      </article>
+    </main>
+
+    <div id="noResults" class="hidden text-center py-12 bg-white/50 rounded-2xl border border-dashed border-slate-300 mt-6">
+      <p class="text-slate-500 font-medium">표시할 포스트잇이 없습니다. 검색어를 바꾸거나 ＋ 새 포스트잇으로 추가해보세요.</p>
+    </div>
+
+    <footer class="mt-12 text-center text-xs text-slate-500 pb-8">
+      생물학 심화 스터디 보드 • 포스트잇 대시보드 • 이 브라우저에 자동 저장됩니다
+    </footer>
+  </div>
+
+  <!-- AI에게 포스트잇 요청 모달 -->
+  <div id="aiModal" class="modal-bg" onclick="if(event.target===this)closeAiModal()">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-5 max-h-[90vh] overflow-y-auto">
+      <h2 class="text-lg font-extrabold text-slate-800 mb-2">🤖 챗GPT(AI)로 포스트잇 만들기</h2>
+      <p class="text-xs text-slate-500 mb-4">OpenAI API 키를 입력하고 원하는 생물학 주제를 말하면 AI가 포스트잇 내용을 자동으로 작성해 줍니다.</p>
+
+      <label class="block text-xs font-bold text-slate-600 mb-1">OpenAI API Key (sk-...) *</label>
+      <input id="aiApiKey" type="password" placeholder="sk-..." class="w-full mb-3 px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-400">
+
+      <label class="block text-xs font-bold text-slate-600 mb-1">어떤 포스트잇을 만들까요? *</label>
+      <textarea id="aiPrompt" placeholder="예: 세포호흡의 해당과정(Glycolysis) 핵심 요약해줘" class="w-full mb-4 px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-400"></textarea>
+
+      <div class="flex justify-end gap-2">
+        <button onclick="closeAiModal()" class="px-4 py-2 text-sm font-semibold bg-slate-100 hover:bg-slate-200 rounded-lg">취소</button>
+        <button id="aiGenBtn" onclick="generateNoteWithAI()" class="px-4 py-2 text-sm font-bold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg">AI 생성 요청</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 새 포스트잇 / 수정 모달 -->
+  <div id="modal" class="modal-bg" onclick="if(event.target===this)closeModal()">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-5 max-h-[90vh] overflow-y-auto">
+      <h2 id="modalTitle" class="text-lg font-extrabold text-slate-800 mb-3">새 포스트잇 만들기</h2>
+
+      <label class="block text-xs font-bold text-slate-600 mb-1">제목 *</label>
+      <input id="newTitle" maxlength="60" class="w-full mb-3 px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-400" placeholder="예: 해당과정 vs TCA 회로">
+
+      <div class="flex gap-3 mb-3">
+        <div class="flex-1">
+          <label class="block text-xs font-bold text-slate-600 mb-1">분야</label>
+          <select id="newCategory" onchange="onCatChange()" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg"></select>
+          <input id="newCatInput" maxlength="12" placeholder="새 분야 이름 (12자 이내)" class="hidden w-full mt-1.5 px-3 py-2 text-sm border border-sky-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-300">
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label class="block text-xs font-bold text-slate-600 mb-1">색상</label>
+        <div id="swatches" class="flex flex-wrap items-center gap-1.5 pt-1"></div>
+      </div>
+
+      <div id="textFields">
+        <label class="block text-xs font-bold text-slate-600 mb-1">내용 <span class="font-normal text-slate-400">(한 줄 = 글머리 한 개)</span></label>
+        <textarea id="newBody" rows="5" class="w-full mb-3 px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-400" placeholder="핵심 내용을 줄바꿈으로 구분해 입력"></textarea>
+
+        <label class="block text-xs font-bold text-slate-600 mb-1">💡 암기 팁 (선택)</label>
+        <input id="newMemo" class="w-full mb-3 px-3 py-2 text-sm border border-slate-300 rounded-lg" placeholder="두문자, 연상법 등">
+
+        <label class="block text-xs font-bold text-slate-600 mb-1">⚠️ 주의사항 (선택)</label>
+        <input id="newWarn" class="w-full mb-4 px-3 py-2 text-sm border border-slate-300 rounded-lg" placeholder="헷갈리기 쉬운 포인트">
+      </div>
+      <p id="richNote" class="hidden mb-4 px-3 py-2 text-xs text-slate-600 bg-slate-100 rounded-lg">이 카드는 표·그림이 들어 있어 수정할 수 없습니다.</p>
+
+      <div class="flex justify-end gap-2">
+        <button onclick="closeModal()" class="px-4 py-2 text-sm font-semibold bg-slate-100 hover:bg-slate-200 rounded-lg">취소</button>
+        <button id="saveBtn" onclick="saveCard()" class="px-4 py-2 text-sm font-bold bg-slate-800 hover:bg-slate-700 text-white rounded-lg">추가</button>
+      </div>
+    </div>
+  </div>
+
+  <nav id="bottomBar">
+    <button onclick="toggleAllSmart()">↕ 펼침·접힘</button>
+    <button class="primary" onclick="openModal()">＋ 새 포스트잇</button>
+    <button onclick="openAiModal()" style="background:#4f46e5;color:#fff;">🤖 AI 요청</button>
+    <button onclick="openMenu()">⋯ 더보기</button>
+  </nav>
+
+  <div id="menuSheet" class="modal-bg" onclick="if(event.target===this)closeMenu()">
+    <div>
+      <h2>더보기</h2>
+      <button onclick="toggleAll(true);closeMenu()">📖 모두 펼치기</button>
+      <button onclick="toggleAll(false);closeMenu()">📕 모두 접기</button>
+      <button onclick="closeMenu();exportData()">⬇ 백업 저장</button>
+      <button onclick="closeMenu();document.getElementById('importFile').click()">⬆ 백업 불러오기</button>
+      <button onclick="closeMenu();restoreBuiltins()">↩ 기본 카드 복원</button>
+      <button class="danger" onclick="closeMenu();deleteAllCards()">🗑 전체 삭제</button>
+      <button class="close" onclick="closeMenu()">닫기</button>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+
+  <script>
+    /* ========== AI 연동 기능 ========== */
+    const LS_AI_KEY = 'openai_api_key';
+
+    function openAiModal() {
+      const savedKey = localStorage.getItem(LS_AI_KEY) || '';
+      document.getElementById('aiApiKey').value = savedKey;
+      document.getElementById('aiModal').classList.add('show');
+    }
+    function closeAiModal() {
+      document.getElementById('aiModal').classList.remove('show');
+    }
+
+    async function generateNoteWithAI() {
+      const apiKey = document.getElementById('aiApiKey').value.trim();
+      const prompt = document.getElementById('aiPrompt').value.trim();
+      if (!apiKey) { alert('OpenAI API Key를 입력해주세요.'); return; }
+      if (!prompt) { alert('만들고 싶은 주제나 내용을 입력해주세요.'); return; }
+
+      localStorage.setItem(LS_AI_KEY, apiKey);
+      const btn = document.getElementById('aiGenBtn');
+      btn.textContent = 'AI 생성 중...';
+      btn.disabled = true;
+
+      try {
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
+          },
+          body: JSON.stringify({
+            model: 'gpt-4o-mini',
+            messages: [
+              {
+                role: 'system',
+                content: `당신은 생물학 암기 포스트잇 데이터를 생성해주는 조교입니다. 사용자의 요청에 대해 반드시 아래 JSON 형식으로만 응답해주세요. 마크다운 백틱(```json)을 쓰지 말고 순수 JSON 문자열만 반환하세요.
+{
+  "title": "카드 제목 (60자 이내)",
+  "category": "분자생물학 또는 면역학 또는 대사·신경 또는 발생·생리학 중 하나",
+  "body": "핵심 내용들을 줄바꿈(\\n)으로 구분하여 작성",
+  "memo": "💡 암기 팁 또는 두문자 암기법 (선택)",
+  "warn": "⚠️ 주의할 점이나 오개념 주의 포인트 (선택)"
+}`
+              },
+              { role: 'user', content: prompt }
+            ],
+            temperature: 0.7
+          })
+        });
+
+        const data = await response.json();
+        if (data.error) {
+          throw new Error(data.error.message);
+        }
+
+        const content = data.choices[0].message.content.trim();
+        const cleanJson = content.replace(/^```json\s*/, '').replace(/^```\s*/, '').replace(/\s*```$/, '');
+        const parsed = JSON.parse(cleanJson);
+
+        registerCat(parsed.category);
+        const card = {
+          id: 'c' + Date.now(),
+          title: parsed.title,
+          category: parsed.category,
+          color: 'yellow',
+          body: parsed.body,
+          memo: parsed.memo || '',
+          warn: parsed.warn || '',
+          tilt: TILTS[Math.floor(Math.random() * TILTS.length)]
+        };
+
+        const list = loadList(LS_CARDS);
+        list.push(card);
+        saveList(LS_CARDS, list);
+        document.getElementById('cardsGrid').prepend(buildCard(card));
+        applyFilters();
+        closeAiModal();
+        document.getElementById('aiPrompt').value = '';
+        toast('AI가 포스트잇을 성공적으로 만들었습니다!');
+      } catch (err) {
+        alert('생성 실패: ' + err.message);
+      } finally {
+        btn.textContent = 'AI 생성 요청';
+        btn.disabled = false;
+      }
+    }
+
+    /* ========== 기본 기능 및 기존 스크립트 유지 ========== */
+    function toggleAll(shouldOpen) {
+      document.querySelectorAll('.sticky-note details').forEach(d => {
+        if (d.closest('.sticky-note').style.display !== 'none') d.open = shouldOpen;
+      });
+    }
+
+    let currentCategory = 'all';
+    function filterCategory(category) {
+      currentCategory = category;
+      const label = category === 'all' ? '전체보기' : category;
+      document.querySelectorAll('#categoryFilters .filter-btn').forEach(btn => {
+        btn.classList.toggle('active', (btn.dataset.cat || btn.textContent.trim()) === label);
+      });
+      applyFilters();
+    }
+
+    function applyFilters() {
+      const query = document.getElementById('searchInput').value.toLowerCase().trim();
+      let visible = 0;
+      document.querySelectorAll('.sticky-note').forEach(card => {
+        const catOk = currentCategory === 'all' || card.dataset.category === currentCategory;
+        const kw = (card.dataset.keywords || '').toLowerCase();
+        const searchOk = !query || kw.includes(query) || card.textContent.toLowerCase().includes(query);
+        const show = catOk && searchOk;
+        card.style.display = show ? 'block' : 'none';
+        if (show) visible++;
+      });
+      document.getElementById('noResults').classList.toggle('hidden', visible > 0);
+    }
+
+    const LS_CARDS = 'postit_custom_cards';
+    const LS_HIDDEN = 'postit_hidden_builtin';
+    const BADGE = {'분자생물학':'badge-mol','면역학':'badge-imm','대사·신경':'badge-met','발생·생리학':'badge-dev'};
+    const TILTS = ['tilt-left-1','tilt-right-1','tilt-left-2','tilt-right-2','tilt-zero'];
+    const ARROW = '<svg class="toggle-icon text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>';
+    let editingId = null;
+
+    const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    function loadList(k) { try { return JSON.parse(localStorage.getItem(k)) || []; } catch (e) { return []; } }
+    function saveList(k, v) {
+      try { localStorage.setItem(k, JSON.stringify(v)); return true; }
+      catch (e) { alert('저장에 실패했습니다.'); return false; }
+    }
+    let toastTimer;
+    function toast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg; t.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => t.classList.remove('show'), 1800);
+    }
+
+    function buildCard(c) {
+      const el = document.createElement('article');
+      const isHex = /^#[0-9a-fA-F]{6}$/.test(c.color);
+      el.className = `sticky-note ${isHex ? 'note-custom' : 'note-' + c.color} ${c.tilt}`;
+      if (isHex) {
+        el.style.background = `linear-gradient(135deg, ${mixWhite(c.color, 0.9)} 0%, ${mixWhite(c.color, 0.72)} 100%)`;
+        el.style.borderTopColor = c.color;
+      }
+      el.dataset.category = c.category;
+      el.dataset.customId = c.id;
+      el.dataset.keywords = (c.title + ' ' + c.body + ' ' + c.memo + ' ' + c.warn).toLowerCase();
+      const items = c.body.split('\n').map(s => s.trim()).filter(Boolean).map(s => `<li>${esc(s)}</li>`).join('');
+      el.innerHTML = `
+        <div class="note-pin"></div>
+        <button class="edit-btn" title="수정" onclick="editCard(this)">✎</button>
+        <button class="del-btn" title="삭제" onclick="deleteCard(this)">✕</button>
+        <details ${c.html ? '' : 'open'}>
+          <summary><div>
+            <span class="badge ${badgeClass(c.category)}">${esc(c.category)}</span>
+            <h3 class="text-base font-bold text-slate-900">${esc(c.title)}</h3>
+          </div>${ARROW}</summary>
+          <div class="card-content${c.html ? ' rich-content' : ''}">
+            ${items ? `<ul class="list-disc pl-4 space-y-1 text-slate-700">${items}</ul>` : ''}
+            ${c.memo ? `<div class="memory">💡 ${esc(c.memo)}</div>` : ''}
+            ${c.warn ? `<div class="warning">⚠️ ${esc(c.warn)}</div>` : ''}
+          </div>
+        </details>`;
+      return el;
+    }
+
+    function openModal(card) {
+      editingId = card ? card.id : null;
+      document.getElementById('modalTitle').textContent = card ? '포스트잇 수정' : '새 포스트잇 만들기';
+      document.getElementById('saveBtn').textContent = card ? '저장' : '추가';
+      document.getElementById('newTitle').value = card ? card.title : '';
+      document.getElementById('newBody').value = card ? card.body : '';
+      document.getElementById('newMemo').value = card ? card.memo : '';
+      document.getElementById('newWarn').value = card ? card.warn : '';
+      refreshCategorySelect(card ? card.category : builtinName('분자생물학'));
+      setColorSelection(card ? card.color : 'yellow');
+      document.getElementById('textFields').classList.remove('hidden');
+      document.getElementById('richNote').classList.add('hidden');
+      document.getElementById('modal').classList.add('show');
+      document.getElementById('newTitle').focus();
+    }
+    function closeModal() { document.getElementById('modal').classList.remove('show'); editingId = null; }
+
+    function saveCard() {
+      const title = document.getElementById('newTitle').value.trim();
+      if (!title) { alert('제목을 입력해주세요.'); return; }
+      let category = document.getElementById('newCategory').value;
+      if (category === '__new__') {
+        category = document.getElementById('newCatInput').value.trim();
+        if (!category) { alert('새 분야 이름을 입력해주세요.'); return; }
+      }
+      registerCat(category);
+      const data = {
+        title, category,
+        color: getSelectedColor(),
+        body: document.getElementById('newBody').value,
+        memo: document.getElementById('newMemo').value.trim(),
+        warn: document.getElementById('newWarn').value.trim()
+      };
+      const list = loadList(LS_CARDS);
+      const grid = document.getElementById('cardsGrid');
+
+      if (editingId) {
+        const i = list.findIndex(c => c.id === editingId);
+        if (i < 0) { closeModal(); return; }
+        list[i] = Object.assign(list[i], data);
+        saveList(LS_CARDS, list);
+        const old = grid.querySelector(`[data-custom-id="${editingId}"]`);
+        if (old) old.replaceWith(buildCard(list[i]));
+        toast('수정되었습니다');
+      } else {
+        const card = Object.assign({ id: 'c' + Date.now(), tilt: TILTS[Math.floor(Math.random() * TILTS.length)] }, data);
+        list.push(card);
+        saveList(LS_CARDS, list);
+        grid.prepend(buildCard(card));
+        toast('포스트잇이 추가되었습니다');
+      }
+      closeModal();
+      applyFilters();
+    }
+
+    function editCard(btn) {
+      const id = btn.closest('.sticky-note').dataset.customId;
+      const card = loadList(LS_CARDS).find(c => c.id === id);
+      if (card) openModal(card);
+    }
+
+    function deleteCard(btn) {
+      const card = btn.closest('.sticky-note');
+      if (!confirm('포스트잇을 삭제할까요?')) return;
+      if (card.dataset.customId) {
+        saveList(LS_CARDS, loadList(LS_CARDS).filter(c => c.id !== card.dataset.customId));
+      } else {
+        const hidden = loadList(LS_HIDDEN);
+        hidden.push(card.dataset.builtinId);
+        saveList(LS_HIDDEN, hidden);
+      }
+      card.remove();
+      applyFilters();
+      toast('삭제되었습니다');
+    }
+
+    function deleteAllCards() {
+      if (!confirm('모든 포스트잇을 삭제하시겠습니까?')) return;
+      saveList(LS_CARDS, []);
+      document.querySelectorAll('#cardsGrid > article').forEach(el => el.remove());
+      applyFilters();
+      toast('전체 삭제되었습니다');
+    }
+
+    function restoreBuiltins() {
+      saveList(LS_HIDDEN, []);
+      location.reload();
+    }
+
+    function exportData() {
+      const payload = { app: 'biology-postit-board', customCards: loadList(LS_CARDS), hiddenBuiltin: loadList(LS_HIDDEN) };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = '포스트잇백업.json';
+      a.click();
+    }
+
+    function importData(input) {
+      const file = input.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const data = JSON.parse(reader.result);
+        saveList(LS_CARDS, data.customCards || []);
+        location.reload();
+      };
+      reader.readAsText(file);
+    }
+
+    const COLOR_PRESETS = [
+      { id: 'yellow', hex: '#fbc02d', label: '노랑' },
+      { id: 'orange', hex: '#fb8c00', label: '주황' },
+      { id: 'red',    hex: '#e53935', label: '빨강' },
+      { id: 'pink',   hex: '#ec407a', label: '분홍' },
+      { id: 'purple', hex: '#8e24aa', label: '보라' },
+      { id: 'blue',   hex: '#1e88e5', label: '파랑' },
+      { id: 'sky',    hex: '#29b6f6', label: '하늘' },
+      { id: 'teal',   hex: '#00897b', label: '청록' },
+      { id: 'green',  hex: '#43a047', label: '초록' },
+      { id: 'lime',   hex: '#afb42b', label: '라임' },
+      { id: 'brown',  hex: '#8d6e63', label: '갈색' },
+      { id: 'gray',   hex: '#78909c', label: '회색' }
+    ];
+
+    function mixWhite(hex, t) {
+      const n = parseInt(hex.slice(1), 16);
+      const m = v => Math.round(v + (255 - v) * t);
+      return `rgb(${m(n >> 16)},${m((n >> 8) & 255)},${m(n & 255)})`;
+    }
+
+    function renderSwatches() {
+      const box = document.getElementById('swatches');
+      box.innerHTML = COLOR_PRESETS.map((c, i) =>
+        `<label title="${c.label}"><input type="radio" name="newColor" value="${c.id}" class="hidden"${i === 0 ? ' checked' : ''}><span class="swatch" style="background:${c.hex}"></span></label>`
+      ).join('') +
+        `<label title="직접 고르기" class="relative inline-block" style="width:28px;height:28px">
+           <input type="radio" name="newColor" value="custom" class="hidden">
+           <span class="swatch" id="customSwatch" style="background:conic-gradient(#f44336,#ffeb3b,#4caf50,#00bcd4,#3f51b5,#e91e63,#f44336)"></span>
+           <input type="color" id="newColorCustom" value="#ff7aa2" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+         </label>`;
+      const picker = document.getElementById('newColorCustom');
+      picker.addEventListener('input', () => {
+        document.querySelector('input[name="newColor"][value="custom"]').checked = true;
+        document.getElementById('customSwatch').style.background = picker.value;
+      });
+    }
+
+    function setColorSelection(color) {
+      const customSwatch = document.getElementById('customSwatch');
+      customSwatch.style.background = 'conic-gradient(#f44336,#ffeb3b,#4caf50,#00bcd4,#3f51b5,#e91e63,#f44336)';
+      if (/^#[0-9a-fA-F]{6}$/.test(color)) {
+        document.getElementById('newColorCustom').value = color;
+        customSwatch.style.background = color;
+        document.querySelector('input[name="newColor"][value="custom"]').checked = true;
+      } else {
+        const r = document.querySelector(`input[name="newColor"][value="${color}"]`) || document.querySelector('input[name="newColor"][value="yellow"]');
+        r.checked = true;
+      }
+    }
+
+    function getSelectedColor() {
+      const v = document.querySelector('input[name="newColor"]:checked').value;
+      return v === 'custom' ? document.getElementById('newColorCustom').value : v;
+    }
+
+    const LS_CATS = 'postit_custom_categories';
+    const LS_BNAMES = 'postit_builtin_cat_names';
+    const ORIG_CATS = Object.keys(BADGE);
+    function loadMap(k) { try { return JSON.parse(localStorage.getItem(k)) || {}; } catch (e) { return {}; } }
+    function builtinName(orig) { return loadMap(LS_BNAMES)[orig] || orig; }
+    function builtinNames() { return ORIG_CATS.map(builtinName); }
+    function origOf(name) { return ORIG_CATS.find(o => builtinName(o) === name); }
+    function badgeClass(cat) {
+      const o = origOf(cat);
+      if (o) return BADGE[o];
+      let h = 0; for (const ch of String(cat)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+      return 'badge-x' + (h % 6);
+    }
+    function allCats() { return builtinNames().concat(loadList(LS_CATS)); }
+
+    function registerCat(name) {
+      if (!name || builtinNames().includes(name) || name === '전체보기') return;
+      const list = loadList(LS_CATS);
+      if (list.includes(name)) return;
+      list.push(name);
+      saveList(LS_CATS, list);
+      renderCatButtons();
+      refreshCategorySelect(name);
+    }
+
+    function refreshCategorySelect(selected) {
+      const sel = document.getElementById('newCategory');
+      const keep = selected !== undefined ? selected : sel.value;
+      const cats = allCats();
+      sel.innerHTML = '';
+      cats.forEach(n => {
+        const o = document.createElement('option');
+        o.value = n; o.textContent = n; sel.appendChild(o);
+      });
+      const o = document.createElement('option');
+      o.value = '__new__'; o.textContent = '＋ 새 분야 만들기…'; sel.appendChild(o);
+      sel.value = (cats.includes(keep) || keep === '__new__') ? keep : builtinName('분자생물학');
+      onCatChange();
+    }
+
+    function onCatChange() {
+      const isNew = document.getElementById('newCategory').value === '__new__';
+      document.getElementById('newCatInput').classList.toggle('hidden', !isNew);
+    }
+
+    function renderCatButtons() {
+      const box = document.getElementById('categoryFilters');
+      while (box.children.length > 1) box.lastElementChild.remove();
+      builtinNames().forEach(n => {
+        const b = document.createElement('button');
+        b.className = 'filter-btn px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-300 transition hover:bg-slate-100';
+        b.dataset.cat = n; b.textContent = n;
+        b.onclick = () => filterCategory(n);
+        box.appendChild(b);
+      });
+      loadList(LS_CATS).forEach(n => {
+        const wrap = document.createElement('span');
+        wrap.className = 'inline-flex';
+        const b = document.createElement('button');
+        b.className = 'filter-btn px-3 py-1.5 text-xs font-medium rounded-l-lg border border-slate-300 transition hover:bg-slate-100';
+        b.dataset.cat = n; b.textContent = n;
+        b.onclick = () => filterCategory(n);
+        wrap.appendChild(b);
+        box.appendChild(wrap);
+      });
+    }
+
+    function openMenu() { document.getElementById('menuSheet').classList.add('show'); }
+    function closeMenu() { document.getElementById('menuSheet').classList.remove('show'); }
+    function toggleAllSmart() {
+      const ds = Array.from(document.querySelectorAll('.sticky-note')).filter(c => c.style.display !== 'none').map(c => c.querySelector('details'));
+      toggleAll(!ds.some(d => d && d.open));
+    }
+
+    (function init() {
+      const hidden = loadList(LS_HIDDEN);
+      document.querySelectorAll('#cardsGrid > article').forEach(card => {
+        const id = card.querySelector('h3').textContent.trim();
+        card.dataset.builtinId = id;
+        if (hidden.includes(id)) { card.remove(); return; }
+        card.querySelector('summary').insertAdjacentHTML('beforeend', ARROW);
+      });
+      const grid = document.getElementById('cardsGrid');
+      loadList(LS_CARDS).forEach(c => { registerCat(c.category); grid.prepend(buildCard(c)); });
+      renderSwatches();
+      renderCatButtons();
+      refreshCategorySelect();
+      applyFilters();
+    })();
+  </script>
+</body>
+</html>
